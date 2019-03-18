@@ -8,8 +8,7 @@ import rasterio
 from rasterio.enums import Resampling
 import ogr
 import shapely
-from shapely.geometry import MultiLineString
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiLineString, MultiPolygon, mapping, shape
 from shapely.ops import cascaded_union
 from warnings import warn
 
@@ -19,7 +18,7 @@ class CoordTransformer(object):
 
     Notes
     -----
-    This function will take in an image or geometric object (Shapely or GDAL)
+    This class will take in an image or geometric object (Shapely or GDAL)
     and transform its coordinate space based on `dest_obj` . `dest_obj`
     should be an instance of :class:`rasterio.DatasetReader` .
 
@@ -300,27 +299,32 @@ def geometries_internal_intersection(polygons):
         the same CRS as the input.
     """
     # convert `polygons` to geoseries and get spatialindex
+    # TODO: Implement test to see if `polygon` items are actual polygons or
+    # WKT strings
     if isinstance(polygons, gpd.GeoSeries):
         gs = polygons
     else:
-        gs = gpd.GeoSeries(polygons).reset_index()
-    sindex = gs.sindex()
+        gs = gpd.GeoSeries(polygons).reset_index(drop=True)
+    sindex = gs.sindex
+    gs_bboxes = gs.apply(lambda x: x.bounds)
 
     # find indices of polygons that overlap in gs
-    intersect_lists = gs.apply(lambda x: sindex.intersection(x))
+    intersect_lists = gs_bboxes.apply(lambda x: list(sindex.intersection(x)))
+    intersect_lists = intersect_lists.dropna()
+    # drop all objects that only have self-intersects
+    # first, filter down to the ones that have _some_ intersection with others
+    intersect_lists = intersect_lists[
+        intersect_lists.apply(lambda x: len(x) > 1)]
+    # then, drop self-intersects
+    intersect_lists = intersect_lists.reset_index().apply(
+        lambda x: [i for i in x[0] if i != x['index']], axis=1)
 
-    # get rid of self-intersects
-    intersect_lists = intersect_lists.apply(
-        lambda x: [i for i in x if i != x.index])
-
-    # get rid of rows with no overlaps
-    len_intersects = intersect_lists.apply(len)
-    intersect_lists = intersect_lists[len_intersects > 0]
     output_polys = []
+    # create intersection polygons and add them to output_polys
+    _ = intersect_lists.reset_index().apply(lambda x: output_polys.extend(
+        list(gs[x['index']].intersection(gs[i]) for i in x[0])), axis=1)
 
-    for idx in intersect_lists.index:
-        for intersector_idx in intersect_lists[idx]:
-            output_polys.append(gs[idx].intersection(gs[intersector_idx]))
+    # combine these
 
     return cascaded_union(output_polys)
 
