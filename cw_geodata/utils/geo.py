@@ -10,6 +10,7 @@ import ogr
 import shapely
 from shapely.geometry import MultiLineString, MultiPolygon, mapping, shape
 from shapely.ops import cascaded_union
+from shapely.wkt import loads
 from warnings import warn
 
 
@@ -342,8 +343,8 @@ def split_multi_geometries(gdf, obj_id_col=None, group_col=None,
         If one exists, the name of the column that uniquely identifies each
         geometry (e.g. the ``"BuildingId"`` column in many SpaceNet datasets).
         This will be tracked so multiple objects don't get produced with
-        the same ID. Note that object ID column may be renumbered differently
-        on output. If passed, `group_col` must also be provided.
+        the same ID. Note that object ID column will be renumbered on output.
+        If passed, `group_col` must also be provided.
     group_col : str, optional
         A column to identify groups for sequential numbering (for example,
         ``'ImageId'`` for sequential number of ``'BuildingId'``). Must be
@@ -363,12 +364,16 @@ def split_multi_geometries(gdf, obj_id_col=None, group_col=None,
     if obj_id_col and not group_col:
         raise ValueError('group_col must be provided if obj_id_col is used.')
     gdf2 = _check_gdf_load(gdf)
-
+    # drop duplicate columns (happens if loading a csv with geopandas)
+    gdf2 = gdf2.loc[:, ~gdf2.columns.duplicated()]
+    # check if the values in gdf2[geometry] are polygons; if strings, do loads
+    if isinstance(gdf2[geom_col][0], str):
+        gdf2[geom_col] = gdf2[geom_col].apply(loads)
     split_geoms_gdf = pd.concat(
         gdf2.apply(_split_multigeom_row, axis=1, geom_col=geom_col).tolist())
     gdf2.drop(index=split_geoms_gdf.index.unique())  # remove multipolygons
     gdf2 = gpd.GeoDataFrame(pd.concat([gdf2, split_geoms_gdf],
-                                      reset_index=True), crs=gdf.crs)
+                                      ignore_index=True), crs=gdf2.crs)
 
     if obj_id_col:
         gdf2[obj_id_col] = gdf2.groupby(group_col).cumcount()+1

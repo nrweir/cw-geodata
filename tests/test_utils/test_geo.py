@@ -61,3 +61,24 @@ class TestGeometriesInternalIntersection(object):
         # set a threshold for how good overlap with truth has to be in case of
         # rounding errors
         assert truth.intersection(preds).area/truth.area > 0.99
+
+
+class TestSplitMultiGeometries(object):
+    """Test for splittling MultiPolygons."""
+
+    def test_simple_split_multipolygon(self):
+        output = split_multi_geometries(os.path.join(data_dir,
+                                                     'w_multipolygon.csv'))
+        expected = gpd.read_file(os.path.join(
+            data_dir, 'split_multi_result.json')).drop(columns='id')
+
+        assert expected.equals(output)
+
+    def test_grouped_split_multipolygon(self):
+        output = split_multi_geometries(
+            os.path.join(data_dir, 'w_multipolygon.csv'), obj_id_col='field_1',
+            group_col='truncated')
+        expected = gpd.read_file(os.path.join(
+            data_dir, 'split_multi_grouped_result.json')).drop(columns='id')
+
+        assert expected.equals(output)
