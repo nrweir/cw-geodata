@@ -1,15 +1,12 @@
 import os
-import numpy as np
 import pandas as pd
 import geopandas as gpd
-import rasterio
 import shapely
 from affine import Affine
 from shapely.wkt import loads
 from cw_geodata.data import data_dir
-from cw_geodata.utils.geo import CoordTransformer
-from cw_geodata.utils.geo import get_crs_from_ogr, list_to_affine, \
-    geometries_internal_intersection, split_multi_geometries
+from cw_geodata.utils.geo import list_to_affine, split_multi_geometries, \
+    geometries_internal_intersection
 
 
 class TestCoordTransformer(object):
