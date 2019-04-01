@@ -41,14 +41,17 @@ def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
     if not raster_src and not affine_obj:
         raise ValueError("Either raster_src or affine_obj must be provided.")
 
-    if raster_src:
+    if raster_src is not None:
         affine_xform = get_geo_transform(raster_src)
     else:
         if isinstance(affine_obj, Affine):
             affine_xform = affine_obj
         else:
-            # assume it's a list with valid format.
-            affine_xform = list_to_affine(affine_obj)
+            # assume it's a list in either gdal or "standard" order
+            # (list_to_affine checks which it is)
+            if len(affine_obj) == 9:  # if it's straight from rasterio
+                affine_obj = affine_obj[0:6]
+                affine_xform = list_to_affine(affine_obj)
 
     if inverse:  # geo->px transform
         affine_xform = ~affine_xform
@@ -56,7 +59,7 @@ def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
     if isinstance(geom, str):
         # get the polygon out of the wkt string
         g = shapely.wkt.loads(geom)
-    elif isinstance(geom, shapely.Geometry):
+    elif isinstance(geom, shapely.geometry.base.BaseGeometry):
         g = geom
     else:
         raise TypeError('The provided geometry is not an accepted format. ' +
