@@ -1,9 +1,11 @@
 import os
+import pandas as pd
 from affine import Affine
 from shapely.geometry import Polygon
-from shapely.wkt import loads
+from shapely.wkt import loads, dumps
 from cw_geodata.data import data_dir
-from cw_geodata.vector_label.polygon import convert_poly_coords
+from cw_geodata.vector_label.polygon import convert_poly_coords, \
+    affine_transform_gdf
 
 square = Polygon([(10, 20), (10, 10), (20, 10), (20, 20)])
 forward_result = loads("POLYGON ((733606 3725129, 733606 3725134, 733611 3725134, 733611 3725129, 733606 3725129))")
@@ -12,8 +14,9 @@ reverse_result = loads("POLYGON ((-1467182 7450238, -1467182 7450258, -1467162 7
 aff = Affine(0.5, 0.0, 733601.0, 0.0, -0.5, 3725139.0)
 affine_list = [0.5, 0.0, 733601.0, 0.0, -0.5, 3725139.0]
 long_affine_list = [0.5, 0.0, 733601.0, 0.0, -0.5, 3725139.0,
-                         0.0, 0.0, 1.0]
-gdal_affine_list = [933601.0, 0.5, 0.0, 3725139.0, 0.0, -0.5]
+                    0.0, 0.0, 1.0]
+gdal_affine_list = [733601.0, 0.5, 0.0, 3725139.0, 0.0, -0.5]
+
 
 class TestConvertPolyCoords(object):
     """Test the convert_poly_coords functionality."""
@@ -56,3 +59,16 @@ class TestConvertPolyCoords(object):
             square, affine_obj=long_affine_list
             )
         assert fwd_xform_result == forward_result
+
+
+class TestAffineTransformGDF(object):
+    """Test the affine_transform_gdf functionality."""
+
+    def test_transform_csv(self):
+        truth_gdf = pd.read_csv(os.path.join(data_dir, 'aff_gdf_result.csv'))
+        input_df = os.path.join(data_dir, 'sample.csv')
+        output_gdf = affine_transform_gdf(input_df, aff,
+                                          geom_col="PolygonWKT_Pix",
+                                          precision=0)
+        output_gdf['geometry'] = output_gdf['geometry'].apply(dumps, trim=True)
+        assert output_gdf.equals(truth_gdf)

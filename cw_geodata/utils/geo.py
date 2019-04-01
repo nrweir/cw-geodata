@@ -150,6 +150,14 @@ def _split_multigeom(multigeom):
     return list(multigeom)
 
 
+def _reduce_geom_precision(geom, precision=2):
+    geojson = mapping(geom)
+    geojson['coordinates'] = np.round(np.array(geojson['coordinates']),
+                                      precision)
+
+    return shape(geojson)
+
+
 # PRETEND THIS ISN'T HERE AT THE MOMENT
 # class CoordTransformer(object):
 #     """A transformer class to change coordinate space using affine transforms.

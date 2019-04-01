@@ -2,7 +2,7 @@ import os
 import shapely
 from affine import Affine
 import rasterio
-from ..utils.geo import list_to_affine
+from ..utils.geo import list_to_affine, _reduce_geom_precision
 from ..raster_image.image import get_geo_transform
 from shapely.geometry import box, Polygon
 import pandas as pd
@@ -10,7 +10,8 @@ import geopandas as gpd
 from rtree.core import RTreeError
 
 
-def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
+def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False,
+                        precision=None):
     """Georegister geometry objects currently in pixel coords or vice versa.
 
     Arguments
@@ -30,6 +31,9 @@ def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
     inverse : bool, optional
         If true, will perform the inverse affine transformation, going from
         geospatial coordinates to pixel coordinates.
+    precision : int, optional
+        Decimal precision for the polygon output. If not provided, rounding
+        is skipped.
 
     Returns
     -------
@@ -51,7 +55,7 @@ def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
             # (list_to_affine checks which it is)
             if len(affine_obj) == 9:  # if it's straight from rasterio
                 affine_obj = affine_obj[0:6]
-                affine_xform = list_to_affine(affine_obj)
+            affine_xform = list_to_affine(affine_obj)
 
     if inverse:  # geo->px transform
         affine_xform = ~affine_xform
@@ -75,11 +79,14 @@ def convert_poly_coords(geom, raster_src=None, affine_obj=None, inverse=False):
     if isinstance(geom, str):
         # restore to wkt string format
         xformed_g = shapely.wkt.dumps(xformed_g)
+    if precision is not None:
+        xformed_g = _reduce_geom_precision(xformed_g, precision=precision)
 
     return xformed_g
 
 
-def affine_transform_gdf(gdf, affine_obj, inverse=False, geom_col="geometry"):
+def affine_transform_gdf(gdf, affine_obj, inverse=False, geom_col="geometry",
+                         precision=None):
     """Perform an affine transformation on a GeoDataFrame.
 
     Arguments
@@ -98,14 +105,17 @@ def affine_transform_gdf(gdf, affine_obj, inverse=False, geom_col="geometry"):
     geom_col : str, optional
         The column in `gdf` corresponding to the geometry. Defaults to
         ``'geometry'``.
+    precision : int, optional
+        Decimal precision to round the geometries to. If not provided, no
+        rounding is performed.
     """
     if isinstance(gdf, str):  # assume it's a geojson
         if gdf.lower().endswith('json'):
             gdf = gpd.read_file(gdf)
         elif gdf.lower().endswith('csv'):
             gdf = pd.read_csv(gdf)
-            gdf.columns[gdf.columns == geom_col] = 'geometry'
-            if not isinstance(gdf.geometry[0], Polygon):
+            gdf = gdf.rename(columns={geom_col: 'geometry'})
+            if not isinstance(gdf['geometry'][0], Polygon):
                 gdf['geometry'] = gdf['geometry'].apply(shapely.wkt.loads)
         else:
             raise ValueError(
@@ -113,6 +123,9 @@ def affine_transform_gdf(gdf, affine_obj, inverse=False, geom_col="geometry"):
     gdf["geometry"] = gdf["geometry"].apply(convert_poly_coords,
                                             affine_obj=affine_obj,
                                             inverse=inverse)
+    if precision is not None:
+        gdf['geometry'] = gdf['geometry'].apply(
+            _reduce_geom_precision, precision=precision)
     return gdf
 
 
