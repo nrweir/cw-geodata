@@ -1,5 +1,5 @@
 from ..utils.core import _check_df_load, _check_rasterio_im_load
-from ..utils.geo import geometries_internal_intersection
+from ..utils.geo import geometries_internal_intersection, _check_wkt_load
 import numpy as np
 import pandas as pd
 import rasterio
@@ -156,6 +156,7 @@ def footprint_mask(df, out_file=None, reference_im=None, geom_col='geometry',
         raise ValueError(
             'If saving output to file, `reference_im` must be provided.')
     df = _check_df_load(df)
+    df[geom_col] = df[geom_col].apply(_check_wkt_load)  # load in geoms if wkt
     if reference_im:
         reference_im = _check_rasterio_im_load(reference_im)
         shape = reference_im.shape

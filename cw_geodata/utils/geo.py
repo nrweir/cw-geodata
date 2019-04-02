@@ -8,6 +8,9 @@ import rasterio
 from rasterio.enums import Resampling
 import ogr
 import shapely
+from shapely.errors import WKTReadingError
+from shapely.geometry.base import BaseGeometry
+from shapely.wkt import loads
 from shapely.geometry import MultiLineString, MultiPolygon, mapping, shape
 from shapely.ops import cascaded_union
 from shapely.wkt import loads
@@ -156,6 +159,18 @@ def _reduce_geom_precision(geom, precision=2):
                                       precision)
 
     return shape(geojson)
+
+
+def _check_wkt_load(x):
+    """Check if an object is a loaded polygon or not. If not, load it."""
+    if isinstance(x, str):
+        try:
+            x = loads(x)
+        except WKTReadingError:
+            warn('{} is not a WKT-formatted string.'.format(x))
+
+    return x
+
 
 
 # PRETEND THIS ISN'T HERE AT THE MOMENT
