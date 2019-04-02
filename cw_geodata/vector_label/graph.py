@@ -67,6 +67,12 @@ def geojson_to_graph(geojson, graph_name=None, retain_all=True,
         `retain_all` = ``False``). Edge lengths are weighted based on
         geographic distance.
     """
+    # due to an annoying feature of loading these graphs, the numeric road
+    # type identifiers are presented as string versions. we therefore reformat
+    # the valid_road_types list as strings.
+    if valid_road_types is not None:
+        valid_road_types = [str(i) for i in valid_road_types]
+
     log('Creating networkx graph...')
     start_time = time.time()
     # create the graph as a MultiGraph and set the original CRS to EPSG 4326
