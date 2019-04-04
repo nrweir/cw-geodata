@@ -27,9 +27,7 @@ setup(name='cw_geodata',
       include_package_data=True,
       install_requires=inst_reqs,
       extras_require=extra_reqs,
-      entry_points={
-          'console_scripts': [
-              'geotransform_footprints=bin.geotransform_footprints:main'
-              ]
-          }
+      entry_points={'console_scripts': [
+          'geotransform_footprints=cw_geodata.bin.geotransform_footprints:main'
+          ]}
       )
