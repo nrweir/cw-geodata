@@ -30,7 +30,7 @@ def main():
                         help='Use this argument if you wish to convert' +
                         ' footprints in --source-file to a geographic' +
                         ' coordinate system.')
-    parser.add_argument('--footprint_column', '-f', type=str,
+    parser.add_argument('--geometry_column', '-g', type=str,
                         default='geometry', help='The column containing' +
                         ' footprint polygons to transform. If not provided,' +
                         ' defaults to "geometry".')
@@ -89,7 +89,7 @@ def main():
     if args.reference_image is not None:
         arg_df['reference_image'] = args.reference_image
     if args.footprint_column is not None:
-        arg_df['footprint_column'] = args.footprint_column
+        arg_df['geometry_column'] = args.footprint_column
     if args.decimal_precision is not None:
         arg_df['decimal_precision'] = args.decimal_precision
     if args.output_path is not None and not args.batch:
@@ -100,7 +100,7 @@ def main():
         arg_df.rename(columns={'source_file': 'geojson',
                                'reference_image': 'im_path',
                                'decimal_precision': 'precision',
-                               'footprint_column': 'geom_col'})
+                               'geometry_column': 'geom_col'})
         arg_dict_list = arg_df[
             ['geojson', 'im_path', 'precision', 'geom_col']
             ].to_dict(orient='records')
@@ -110,7 +110,7 @@ def main():
         arg_df.rename(columns={'source_file': 'df',
                                'reference_image': 'im_path',
                                'decimal_precision': 'precision',
-                               'footprint_column': 'geom_col'})
+                               'geometry_column': 'geom_col'})
         arg_dict_list = arg_df[
             ['geojson', 'im_path', 'precision', 'geom_col']
             ].to_dict(orient='records')

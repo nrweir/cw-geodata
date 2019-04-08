@@ -9,8 +9,8 @@ from skimage.morphology import square, erosion, dilation
 
 
 def df_to_px_mask(df, channels=['footprint'], out_file=None, reference_im=None,
-                  geom_col='geometry', affine_obj=None, shape=(900, 900),
-                  out_type='int', burn_value=255, **kwargs):
+                  geom_col='geometry', do_transform=False, affine_obj=None,
+                  shape=(900, 900), out_type='int', burn_value=255, **kwargs):
     """Convert a dataframe of geometries to a pixel mask.
 
     Arguments
@@ -44,6 +44,11 @@ def df_to_px_mask(df, channels=['footprint'], out_file=None, reference_im=None,
         `affine_obj` and `shape` are ignored.
     geom_col : str, optional
         The column containing geometries in `df`. Defaults to ``"geometry"``.
+    do_transform : bool, optional
+        Should the values in `df` be transformed from geospatial coordinates
+        to pixel coordinates? Defaults to no (``False``). If ``True``, either
+        `reference_im` or `affine_obj` must be provided as a source for the
+        the required affine transformation matrix.
     affine_obj : `list` or :class:`affine.Affine`, optional
         Affine transformation to use to convert from geo coordinates to pixel
         space. Only provide this argument if `df` is a
@@ -72,12 +77,16 @@ def df_to_px_mask(df, channels=['footprint'], out_file=None, reference_im=None,
     if isinstance(channels, str):  # e.g. if "contact", not ["contact"]
         channels = [channels]
 
+    if out_file and not reference_im:
+        raise ValueError(
+            'If saving output to file, `reference_im` must be provided.')
+
     mask_dict = {}
     if 'footprint' in channels:
         mask_dict['footprint'] = footprint_mask(
             df=df, reference_im=reference_im, geom_col=geom_col,
-            affine_obj=affine_obj, shape=shape, out_type=out_type,
-            burn_value=burn_value
+            do_transform=do_transform, affine_obj=affine_obj, shape=shape,
+            out_type=out_type, burn_value=burn_value
         )
     if 'boundary' in channels:
         mask_dict['boundary'] = boundary_mask(
@@ -136,7 +145,7 @@ def footprint_mask(df, out_file=None, reference_im=None, geom_col='geometry',
         The column containing geometries in `df`. Defaults to ``"geometry"``.
     do_transform : bool, optional
         Should the values in `df` be transformed from geospatial coordinates
-        to pixel coordinates? Defaults to no (False). If True, either
+        to pixel coordinates? Defaults to no (``False``). If ``True``, either
         `reference_im` or `affine_obj` must be provided as a source for the
         the required affine transformation matrix.
     affine_obj : `list` or :class:`affine.Affine`, optional
@@ -286,8 +295,8 @@ def boundary_mask(footprint_msk=None, out_file=None, reference_im=None,
 
 
 def contact_mask(df, out_file=None, reference_im=None, geom_col='geometry',
-                 affine_obj=None, shape=(900, 900), out_type='int',
-                 contact_spacing=10, burn_value=255):
+                 do_transform=False, affine_obj=None, shape=(900, 900),
+                 out_type='int', contact_spacing=10, burn_value=255):
     """Create a pixel mask labeling closely juxtaposed objects.
 
     Notes
@@ -312,6 +321,11 @@ def contact_mask(df, out_file=None, reference_im=None, geom_col='geometry',
         `affine_obj` and `shape` are ignored.
     geom_col : str, optional
         The column containing geometries in `df`. Defaults to ``"geometry"``.
+    do_transform : bool, optional
+        Should the values in `df` be transformed from geospatial coordinates
+        to pixel coordinates? Defaults to no (``False``). If ``True``, either
+        `reference_im` or `affine_obj` must be provided as a source for the
+        the required affine transformation matrix.
     affine_obj : `list` or :class:`affine.Affine`, optional
         Affine transformation to use to convert from geo coordinates to pixel
         space. Only provide this argument if `df` is a
@@ -346,14 +360,16 @@ def contact_mask(df, out_file=None, reference_im=None, geom_col='geometry',
     df_for_footprint = pd.DataFrame({'shape_name': ['overlap'],
                                      'geometry': [intersect_poly]})
     # use `footprint_mask` to create the overlap mask
-    contact_msk = footprint_mask(df_for_footprint, reference_im=reference_im,
-                                 geom_col='geometry', affine_obj=affine_obj,
-                                 shape=shape, out_type=out_type,
-                                 burn_value=burn_value)
-    footprint_msk = footprint_mask(df, reference_im=reference_im,
-                                   geom_col=geom_col, affine_obj=affine_obj,
-                                   shape=shape, out_type=out_type,
-                                   burn_value=burn_value)
+    contact_msk = footprint_mask(
+        df_for_footprint, reference_im=reference_im, geom_col='geometry',
+        do_transform=do_transform, affine_obj=affine_obj, shape=shape,
+        out_type=out_type, burn_value=burn_value
+        )
+    footprint_msk = footprint_mask(
+        df, reference_im=reference_im, geom_col=geom_col,
+        do_transform=do_transform, affine_obj=affine_obj, shape=shape,
+        out_type=out_type, burn_value=burn_value
+        )
     contact_msk[footprint_msk > 0] = 0
     contact_msk = contact_msk > 0
     output_arr = contact_msk.astype('uint8')*burn_value
