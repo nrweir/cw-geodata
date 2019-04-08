@@ -4,6 +4,7 @@ from tqdm import tqdm
 from multiprocessing import Pool
 from cw_geodata.vector_label.polygon import geojson_to_px_gdf
 from cw_geodata.vector_label.polygon import georegister_px_df
+from cw_geodata.utils.cli import _func_wrapper
 from itertools import repeat
 
 
@@ -89,7 +90,7 @@ def main():
     if args.reference_image is not None:
         arg_df['reference_image'] = args.reference_image
     if args.footprint_column is not None:
-        arg_df['geometry_column'] = args.footprint_column
+        arg_df['footprint_column'] = args.footprint_column
     if args.decimal_precision is not None:
         arg_df['decimal_precision'] = args.decimal_precision
     if args.output_path is not None and not args.batch:
@@ -100,9 +101,9 @@ def main():
         arg_df.rename(columns={'source_file': 'geojson',
                                'reference_image': 'im_path',
                                'decimal_precision': 'precision',
-                               'geometry_column': 'geom_col'})
+                               'footprint_column': 'geom_col'})
         arg_dict_list = arg_df[
-            ['geojson', 'im_path', 'precision', 'geom_col']
+            ['geojson', 'im_path', 'precision', 'geom_col', 'output_path']
             ].to_dict(orient='records')
         func_to_call = geojson_to_px_gdf
     elif args.to_geo:
@@ -110,25 +111,21 @@ def main():
         arg_df.rename(columns={'source_file': 'df',
                                'reference_image': 'im_path',
                                'decimal_precision': 'precision',
-                               'geometry_column': 'geom_col'})
+                               'footprint_column': 'geom_col'})
         arg_dict_list = arg_df[
-            ['geojson', 'im_path', 'precision', 'geom_col']
+            ['df', 'im_path', 'precision', 'geom_col', 'output_path']
             ].to_dict(orient='records')
         func_to_call = georegister_px_df
 
     if not args.batch:
         result = func_to_call(**arg_dict_list[0])
+        if not args.output_path:
+            return result
     else:
         with Pool(processes=args.workers) as pool:
             result = tqdm(pool.map(_func_wrapper, zip(repeat(func_to_call),
                                                       arg_dict_list)))
             pool.close()
-    if not args.output_path:
-        return result
-
-
-def _func_wrapper(func_to_call, arg_dict):
-    return func_to_call(**arg_dict)
 
 
 if __name__ == '__main__':

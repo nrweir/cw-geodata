@@ -184,7 +184,6 @@ def georegister_px_df(df, im_path=None, affine_obj=None, crs=None,
     return result
 
 
-
 def geojson_to_px_gdf(geojson, im_path, geom_col='geometry', precision=None,
                       output_path=None):
     """Convert a geojson or set of geojsons from geo coords to px coords.
