@@ -29,6 +29,7 @@ setup(name='cw_geodata',
       extras_require=extra_reqs,
       entry_points={'console_scripts': [
           'geotransform_footprints=cw_geodata.bin.geotransform_footprints:main',
-          'make_masks=cw_geodata.bin.make_masks:main'
+          'make_masks=cw_geodata.bin.make_masks:main',
+          'make_graphs=cw_geodata.bin.make_graphs:main'
           ]}
       )

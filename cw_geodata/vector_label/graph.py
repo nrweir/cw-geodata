@@ -5,8 +5,8 @@ from ..utils.geo import get_subgraph
 import shapely
 from shapely.geometry import Point
 import networkx as nx
-import geopandas as gpd
 import fiona
+import pickle
 from multiprocessing import Pool
 
 
@@ -141,7 +141,7 @@ class Path(object):
 def geojson_to_graph(geojson, graph_name=None, retain_all=True,
                      valid_road_types=None, road_type_field='type', edge_idx=0,
                      first_node_idx=0, weight_norm_field=None, inverse=False,
-                     workers=1, verbose=False):
+                     workers=1, verbose=False, output_path=None):
     """Convert a geojson of path strings to a network graph.
 
     Arguments
@@ -188,6 +188,9 @@ def geojson_to_graph(geojson, graph_name=None, retain_all=True,
         Should not be greater than the number of CPUs available.
     verbose : bool, optional
         Verbose print output. Defaults to ``False`` .
+    output_path : str, optional
+        Path to a pickle file to save the output graph to. Nothing will be
+        saved to disk if not provided.
 
     Returns
     -------
@@ -240,6 +243,11 @@ def geojson_to_graph(geojson, graph_name=None, retain_all=True,
         # code modified from osmnx.core.get_largest_component & induce_subgraph
         largest_cc = max(nx.weakly_connected_components(G), key=len)
         G = get_subgraph(G, largest_cc)
+
+    if output_path:
+        with open(output_path, 'wb') as f:
+            pickle.dump(G, f)
+            f.close()
 
     return G
 
