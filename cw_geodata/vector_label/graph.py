@@ -451,7 +451,7 @@ def linestring_to_edges(linestring, node_gdf):
 
 def graph_to_geojson(G, output_path, encoding='utf-8', overwrite=False):
     """
-    Save graph to geojsons.
+    Save graph to two geojsons: one containing nodes, the other edges.
 
     Arguments
     ---------

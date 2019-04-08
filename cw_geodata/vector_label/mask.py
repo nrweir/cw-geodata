@@ -1,11 +1,16 @@
 from ..utils.core import _check_df_load, _check_rasterio_im_load
 from ..utils.geo import geometries_internal_intersection, _check_wkt_load
 import numpy as np
+from shapely.geometry import Polygon, shape
+import geopandas as gpd
 import pandas as pd
 import rasterio
 from rasterio import features
 from affine import Affine
 from skimage.morphology import square, erosion, dilation
+import cv2
+from collections import defaultdict
+from warnings import warn
 
 
 def df_to_px_mask(df, channels=['footprint'], out_file=None, reference_im=None,
@@ -383,3 +388,72 @@ def contact_mask(df, out_file=None, reference_im=None, geom_col='geometry',
             dst.write(output_arr, indexes=1)
 
     return output_arr
+
+def mask_to_poly_geojson(mask_arr, reference_im=None, output_path=None,
+                         output_type='csv', min_area=40, bg_value=0,
+                         do_transform=False, simplify=False, **kwargs):
+    """Get polygons from an image mask.
+
+    Arguments
+    ---------
+    mask_arr : :class:`numpy.ndarray` of ints
+        A 2D array of integers. Multi-channel masks are not supported, and must
+        be simplified before passing to this function.
+    reference_im : str, optional
+        The path to a reference geotiff to use for georeferencing the polygons
+        in the mask. Required if saving to a GeoJSON (see the ``output_type``
+        argument), otherwise only required if ``do_transform=True``.
+    output_path : str, optional
+        Path to save the output file to. If not provided, no file is saved.
+    output_type : ``'csv'`` or ``'geojson'``, optional
+        If ``output_path`` is provided, this argument defines what type of file
+        will be generated - a CSV (``output_type='csv'``) or a geojson
+        (``output_type='geojson'``).
+    min_area : int, optional
+        The minimum area of a polygon to retain. Filtering is done AFTER
+        any coordinate transformation, and therefore will be in destination
+        units.
+    bg_value : int, optional
+        The value in ``mask_arr`` that denotes background (non-object).
+        Defaults to ``0``.
+    simplify : bool, optional
+        If ``True``, will use the Douglas-Peucker algorithm to simplify edges,
+        saving memory and processing time later. Defaults to ``False``.
+    kwargs
+        Additional arguments to pass to ``simplify_polygon()``.
+
+    Returns
+    -------
+    gdf : :class:`geopandas.GeoDataFrame`
+        A GeoDataFrame of polygons.
+
+    """
+    if do_transform and reference_im is None:
+        raise ValueError(
+            'Coordinate transformation requires a reference image.')
+
+    if do_transform:
+        with rasterio.open(reference_im) as ref:
+            transform = ref.transform
+            crs = ref.crs
+            ref.close()
+    else:
+        transform = Affine(1, 0, 0, 0, 1, 0)  # identity transform
+        crs = None
+
+    mask = mask_arr != bg_value
+    mask = mask.astype('uint8')
+
+    polygon_generator = features.shapes(mask_arr,
+                                        transform=transform,
+                                        mask=mask)
+    polygons = []
+    values = []  # pixel values for the polygon in mask_arr
+    for polygon, value in polygon_generator:
+        polygons.append(shape(polygon))
+        values.append(value)
+
+    polygon_gdf = gpd.GeoDataFrame({'geometry': polygons, 'value': values},
+                                   crs=crs)
+
+    return polygon_gdf
