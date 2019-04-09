@@ -21,13 +21,13 @@ def main():
     parser.add_argument('--road_type_field', '-r', type=str,
                         help='The name of the column in --source_file that' +
                         ' defines the road type of each linestring.')
-    parser.add_argument('--first_edge_idx', '-n', type=int, default=0,
+    parser.add_argument('--first_edge_idx', '-e', type=int, default=0,
                         help='The numeric index to use for the first edge in' +
                         ' the graph. Defaults to 0.')
     parser.add_argument('--first_node_idx', '-n', type=int, default=0,
                         help='The numeric index to use for the first node in' +
                         ' the graph. Defaults to 0.')
-    parser.add_argument('--weight_norm_field', '-w', type=str,
+    parser.add_argument('--weight_norm_field', '-wn', type=str,
                         help='The name of a column in --source_file to' +
                         ' weight edges with. If not provided, edge weights' +
                         ' are determined only by Euclidean distance. If' +
@@ -56,7 +56,7 @@ def main():
 
     args = parser.parse_args()
 
-    if args.batch is not None and args.argument_csv is None:
+    if args.batch and args.argument_csv is None:
         raise ValueError(
             'To perform batch processing, you must provide both --batch and' +
             ' --argument_csv.')
@@ -69,20 +69,28 @@ def main():
         arg_df = pd.read_csv(args.argument_csv)
     else:
         arg_df = pd.DataFrame({})
+    if args.batch:
+        if args.source_file is not None:
+            arg_df['source_file'] = args.source_file
+        if args.output_path is not None:
+            arg_df['output_path'] = args.output_path
+        if args.road_type_field is not None:
+            arg_df['road_type_field'] = args.road_type_field
+        arg_df['first_node_idx'] = args.first_node_idx
+        arg_df['first_edge_idx'] = args.first_edge_idx
+        if args.weight_norm_field is not None:
+            arg_df['weight_norm_field'] = args.weight_norm_field
+    else:
+        arg_df['source_file'] = [args.source_file]
+        arg_df['output_path'] = [args.output_path]
+        arg_df['road_type_field'] = [args.road_type_field]
+        arg_df['first_node_idx'] = [args.first_node_idx]
+        arg_df['first_edge_idx'] = [args.first_edge_idx]
+        arg_df['weight_norm_field'] = [args.weight_norm_field]
 
-    if args.source_file is not None:
-        arg_df['source_file'] = args.source_file
-    if args.output_path is not None:
-        arg_df['output_path'] = args.output_path
-    if args.road_type_field is not None:
-        arg_df['road_type_field'] = args.road_type_field
-    arg_df['first_node_idx'] = args.first_node_idx
-    arg_df['first_edge_idx'] = args.first_edge_idx
-    if args.weight_norm_field is not None:
-        arg_df['weight_norm_field'] = args.weight_norm_field
-    arg_df = arg_df.rename(columns={'source_file': 'vector_file',
+    arg_df = arg_df.rename(columns={'source_file': 'geojson',
                                     'first_edge_idx': 'edge_idx'})
-    arg_dict_list = arg_df[['vector_file', 'output_path', 'road_type_field',
+    arg_dict_list = arg_df[['geojson', 'output_path', 'road_type_field',
                             'weight_norm_field', 'edge_idx', 'first_node_idx',
                             'output_path']
                            ].to_dict(orient='records')

@@ -31,7 +31,7 @@ def main():
                         help='Use this argument if you wish to convert' +
                         ' footprints in --source-file to a geographic' +
                         ' coordinate system.')
-    parser.add_argument('--geometry_column', '-g', type=str,
+    parser.add_argument('--geometry_column', '-c', type=str,
                         default='geometry', help='The column containing' +
                         ' footprint polygons to transform. If not provided,' +
                         ' defaults to "geometry".')
@@ -50,7 +50,7 @@ def main():
                         ' batch processing. It must contain columns to pass' +
                         ' the source_file and reference_image arguments, and' +
                         ' can additionally contain columns providing the' +
-                        ' footprint_column and decimal_precision arguments' +
+                        ' geometry_column and decimal_precision arguments' +
                         ' if you wish to define them differently for items' +
                         ' in the batch. These columns must have the same' +
                         ' names as the corresponding arguments. See the ' +
@@ -63,7 +63,7 @@ def main():
 
     args = parser.parse_args()
     # check that the necessary set of arguments are provided.
-    if args.batch is not None and args.argument_csv is None:
+    if args.batch and args.argument_csv is None:
         raise ValueError(
             'To perform batch processing, you must provide both --batch and' +
             ' --argument_csv.')
@@ -84,34 +84,45 @@ def main():
     else:
         arg_df = pd.DataFrame({})
 
-    # add values from individual arguments to the argument df
-    if args.source_file is not None:
-        arg_df['source_file'] = args.source_file
-    if args.reference_image is not None:
-        arg_df['reference_image'] = args.reference_image
-    if args.footprint_column is not None:
-        arg_df['footprint_column'] = args.footprint_column
-    if args.decimal_precision is not None:
-        arg_df['decimal_precision'] = args.decimal_precision
-    if args.output_path is not None and not args.batch:
-        arg_df['output_path'] = args.output_path
+    if args.batch:
+        # add values from individual arguments to the argument df
+        if args.source_file is not None:
+            arg_df['source_file'] = args.source_file
+        if args.reference_image is not None:
+            arg_df['reference_image'] = args.reference_image
+        if args.geometry_column is not None:
+            arg_df['geometry_column'] = args.geometry_column
+        if args.decimal_precision is not None:
+            arg_df['decimal_precision'] = args.decimal_precision
+    else:
+        # add values from individual arguments to the argument df
+        if args.source_file is not None:
+            arg_df['source_file'] = [args.source_file]
+        if args.reference_image is not None:
+            arg_df['reference_image'] = [args.reference_image]
+        if args.geometry_column is not None:
+            arg_df['geometry_column'] = [args.geometry_column]
+        if args.decimal_precision is not None:
+            arg_df['decimal_precision'] = [args.decimal_precision]
+        if args.output_path is not None:
+            arg_df['output_path'] = [args.output_path]
 
     if args.to_pixel:
         # rename argument columns for compatibility with the target func
-        arg_df.rename(columns={'source_file': 'geojson',
-                               'reference_image': 'im_path',
-                               'decimal_precision': 'precision',
-                               'footprint_column': 'geom_col'})
+        arg_df = arg_df.rename(columns={'source_file': 'geojson',
+                                        'reference_image': 'im_path',
+                                        'decimal_precision': 'precision',
+                                        'geometry_column': 'geom_col'})
         arg_dict_list = arg_df[
             ['geojson', 'im_path', 'precision', 'geom_col', 'output_path']
             ].to_dict(orient='records')
         func_to_call = geojson_to_px_gdf
     elif args.to_geo:
         # rename argument columns for compatibility with the target func
-        arg_df.rename(columns={'source_file': 'df',
-                               'reference_image': 'im_path',
-                               'decimal_precision': 'precision',
-                               'footprint_column': 'geom_col'})
+        arg_df = arg_df.rename(columns={'source_file': 'df',
+                                        'reference_image': 'im_path',
+                                        'decimal_precision': 'precision',
+                                        'geometry_column': 'geom_col'})
         arg_dict_list = arg_df[
             ['df', 'im_path', 'precision', 'geom_col', 'output_path']
             ].to_dict(orient='records')
