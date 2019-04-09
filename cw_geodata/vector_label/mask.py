@@ -1,16 +1,14 @@
 from ..utils.core import _check_df_load, _check_rasterio_im_load
+from ..utils.core import _check_skimage_im_load
 from ..utils.geo import geometries_internal_intersection, _check_wkt_load
 import numpy as np
-from shapely.geometry import Polygon, shape
+from shapely.geometry import shape
 import geopandas as gpd
 import pandas as pd
 import rasterio
 from rasterio import features
 from affine import Affine
 from skimage.morphology import square, erosion, dilation
-import cv2
-from collections import defaultdict
-from warnings import warn
 
 
 def df_to_px_mask(df, channels=['footprint'], out_file=None, reference_im=None,
@@ -389,16 +387,19 @@ def contact_mask(df, out_file=None, reference_im=None, geom_col='geometry',
 
     return output_arr
 
+
 def mask_to_poly_geojson(mask_arr, reference_im=None, output_path=None,
                          output_type='csv', min_area=40, bg_value=0,
-                         do_transform=False, simplify=False, **kwargs):
+                         do_transform=False, simplify=False,
+                         tolerance=0.5, **kwargs):
     """Get polygons from an image mask.
 
     Arguments
     ---------
     mask_arr : :class:`numpy.ndarray` of ints
         A 2D array of integers. Multi-channel masks are not supported, and must
-        be simplified before passing to this function.
+        be simplified before passing to this function. Can also pass an image
+        file path here.
     reference_im : str, optional
         The path to a reference geotiff to use for georeferencing the polygons
         in the mask. Required if saving to a GeoJSON (see the ``output_type``
@@ -419,8 +420,9 @@ def mask_to_poly_geojson(mask_arr, reference_im=None, output_path=None,
     simplify : bool, optional
         If ``True``, will use the Douglas-Peucker algorithm to simplify edges,
         saving memory and processing time later. Defaults to ``False``.
-    kwargs
-        Additional arguments to pass to ``simplify_polygon()``.
+    tolerance : float, optional
+        The tolerance value to use for simplification with the Douglas-Peucker
+        algorithm. Defaults to 0.5. Only has an effect if ``simplify=True``.
 
     Returns
     -------
@@ -428,6 +430,7 @@ def mask_to_poly_geojson(mask_arr, reference_im=None, output_path=None,
         A GeoDataFrame of polygons.
 
     """
+    mask_arr = _check_skimage_im_load(mask_arr)
     if do_transform and reference_im is None:
         raise ValueError(
             'Coordinate transformation requires a reference image.')
@@ -450,10 +453,16 @@ def mask_to_poly_geojson(mask_arr, reference_im=None, output_path=None,
     polygons = []
     values = []  # pixel values for the polygon in mask_arr
     for polygon, value in polygon_generator:
-        polygons.append(shape(polygon))
-        values.append(value)
+        p = shape(polygon).buffer(0.0)
+        if p.area >= min_area:
+            polygons.append(shape(polygon).buffer(0.0))
+            values.append(value)
 
     polygon_gdf = gpd.GeoDataFrame({'geometry': polygons, 'value': values},
                                    crs=crs)
+    if simplify:
+        polygon_gdf['geometry'] = polygon_gdf['geometry'].apply(
+            lambda x: x.simplify(tolerance=tolerance)
+            )
 
     return polygon_gdf
