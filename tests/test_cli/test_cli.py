@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 import subprocess
 import skimage
-from cw_geodata import data_dir
+from cw_geodata.data import data_dir
 import networkx as nx
 
 
@@ -23,11 +23,13 @@ class TestCLI(object):
                        os.path.join(data_dir, 'sample_geotiff.tif') +
                        ' -o ' +
                        dest_loc +
-                       ' -p -d 0')
+                       ' -p -d 0',
+                       shell=True)
         # compare results
         subprocess.run('diff ' + os.path.join(data_dir, 'cli_test', 'expected',
                                               'gj_to_px_result.geojson') +
-                       ' ' + data_dir)
+                       ' ' + data_dir,
+                       shell=True)
         # clean up
         os.remove(dest_loc)
 
@@ -42,7 +44,8 @@ class TestCLI(object):
         if os.path.exists(dest_loc):
             os.remove(dest_loc)
         # run the CLI command
-        subprocess.run('make_graphs -s ' + src_loc + ' -o ' + dest_loc)
+        subprocess.run('make_graphs -s ' + src_loc + ' -o ' + dest_loc,
+                       shell=True)
         with open(truth_loc, 'rb') as f:
             truth_graph = pickle.load(f)
             f.close()
@@ -72,7 +75,8 @@ class TestCLI(object):
             if os.path.exists(os.path.join(dest_dir, im_fname)):
                 os.remove(os.path.join(dest_dir, im_fname))
             # run the CLI command
-            subprocess.run(cmd_start + os.path.join(dest_dir, im_fname) + arg)
+            subprocess.run(cmd_start + os.path.join(dest_dir, im_fname) + arg,
+                           shell=True)
             truth_im = skimage.io.imread(os.path.join(expected_dir, im_fname))
             result_im = skimage.io.imread(os.path.join(dest_dir, im_fname))
             # compare the expected to the result
