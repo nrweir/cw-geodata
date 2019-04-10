@@ -37,7 +37,7 @@ install:
 # command to run tests
 script:
   - pytest --cov=./
-  - kcov ./ tests/test_cli/test_cli.sh
+  - kcov ./ ./cw-geodata/tests/test_cli/test_cli.sh
 
 after_success:
   - codecov
