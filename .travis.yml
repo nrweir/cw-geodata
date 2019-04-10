@@ -10,8 +10,6 @@ before_install:
 # command to install dependencies
 install:
   - sudo apt-get update
-  # install kcov
-  - sudo apt-get install kcov
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -37,7 +35,6 @@ install:
 # command to run tests
 script:
   - pytest --cov=./
-  - kcov ./ ./cw-geodata/tests/test_cli/test_cli.sh
 
 after_success:
   - codecov
