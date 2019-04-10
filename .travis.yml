@@ -12,7 +12,6 @@ install:
   - sudo apt-get update
   # install kcov
   - sudo apt-get install kcov
-  - kcov --version
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
