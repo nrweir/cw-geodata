@@ -9,7 +9,7 @@ before_install:
 
 # command to install dependencies
 install:
-  - sudo apt-get update
+  - apt-get update
   # install kcov
   - tar xzf master.tar.gz
   - cd kcov-master
