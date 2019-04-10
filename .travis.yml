@@ -9,17 +9,10 @@ before_install:
 
 # command to install dependencies
 install:
-  - apt-get update
+  - sudo apt-get update
   # install kcov
-  - tar xzf master.tar.gz
-  - cd kcov-master
-  - mkdir build
-  - cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=${HOME}/kcov ..
-  - make
-  - make install
-  - cd ../..
-  - rm -rf kcov-master
+  - sudo apt-get install kcov
+  - kcov --version
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
